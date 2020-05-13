@@ -7,7 +7,7 @@ import time
 
 #new URL system from Nov 2016 so it doesn't work
 
-def scrape(baseURL, level, subject):
+def scrape_table_links(baseURL):
     html_content = requests.get(baseURL)
     soup = BeautifulSoup(html_content.content, 'lxml')
     #print(soup.prettify())
@@ -17,6 +17,9 @@ def scrape(baseURL, level, subject):
     for row in rows:
         allSubjInGroup.append(row.a.get("href"))
     
+    return allSubjInGroup
+
+def get_files(allSubjInGroup, level, subject):
     #a list of all subject files, e.g. a list of all Economics papers
     subjectFiles = [file for file in allSubjInGroup if subject in file]
     if subjectFiles == []: #if subjectFiles is STILL empty, then it means no files were found for this subject
@@ -29,7 +32,7 @@ def scrape(baseURL, level, subject):
         levelFiles = [file for file in subjectFiles if "HLSL" in file or "SL" not in file]
     elif level == "SL":
         #don't add HL files, but do add HL files or mutual files - e.g. papers for both HL and SL candidates
-        levelFiles = [file for file in subjectFiles if "HLSL" in file or "SL" not in file]
+        levelFiles = [file for file in subjectFiles if "HLSL" in file or "HL" not in file]
     else: #level == "Both
         levelFiles = subjectFiles[:]
     if levelFiles == []: #if subjectFiles is not empty but levelFiles is empty, then that means the subject is available but only at a certain level (e.g. only SL ESS)
@@ -82,8 +85,8 @@ if __name__ == "__main__":
     validMonths = ["November", "May"]
     validLevels = ["HL", "SL", "Both"]
     
-    group1 = ["English"]
-    group2 = ["English B"]
+    group1 = ["English_A1"]
+    group2 = ["English_A2", "English_B", "English_ab_initio"]
     group3 = ["Economics", "Business Management", "Psychology", "Geography", "Global Politics", "History", "Environmental Systems and Societies"]
     group4 = ["Physics", "Chemistry", "Biology", "Design", "Computer Science", "Sports_exercise_and_health_science", "Astronomy"]
     group5 = ["Mathematics"]
@@ -141,15 +144,16 @@ if __name__ == "__main__":
         #Create the baseURL        
         baseURL = ""
         if year < 2016 or (year == 2016 and month == "May"): #before the new system
-            groupsDict = {1: "Studies%20in%20language%20and%20literature", 2: "Language%20acquisition", 3: "Individuals%20and%20societies", 4: "Experimental%20sciences" if (year <= 2011) or month == "November" else "Sciences", 5: "Mathematics", 6: "The%20arts"}
-            groupName = groupsDict[groupNumber]
-            baseURL = f"https://www.ibdocuments.com/IB%20PAST%20PAPERS%20-%20YEAR/{year}%20Examination%20Session/{month}%20{year}%20Examination%20Session/Group%20{groupNumber}%20-%20{groupName}/"
+            baseURL = f"https://www.ibdocuments.com/IB%20PAST%20PAPERS%20-%20YEAR/{year}%20Examination%20Session/{month}%20{year}%20Examination%20Session/" #base url for year folder
+            allGroupNames = scrape_table_links(baseURL) #['/IB%20PAST%20PAPERS%20-%20YEAR/2012%20Examination%20Session/', 'Group%201%20-%20Studies%20in%20language%20and%20literature/', 'Group%202%20-%20Language%20acquisition/', 'Group%203%20-%20Individuals%20and%20societies/', 'Group%204%20-%20Sciences/', 'Group%205%20-%20Mathematics/', 'Group%206%20-%20The%20arts/']
+            groupName = allGroupNames[groupNumber]
+            baseURL += groupName #base url for group folder
         else:
             #groupsDict = {1: "Studies_in_language_and_literature", 2: "Language_acquisition"} 
             #these group names also need a "-eng.html" suffix too...
             pass
             #baseURL =
-        
+    
         downloads.append({"baseURL": baseURL, "year": year, "month": month, "subject": subject, "level": level}) #append a dictionary of the key info
         
         #Once all information has been collected, ask whether to download more sets or start downloading
@@ -159,7 +163,10 @@ if __name__ == "__main__":
     
     #Actually download 
     for downloadSet in downloads:
-        filesToBeDownloaded = scrape(downloadSet["baseURL"], downloadSet["level"], downloadSet["subject"])
+        allSubjInGroup = scrape_table_links(downloadSet["baseURL"])
+        print(allSubjInGroup)
+        
+        filesToBeDownloaded = get_files(allSubjInGroup, downloadSet["level"], downloadSet["subject"])
         
         if filesToBeDownloaded:
             folderName = create_dir(downloadSet["year"], downloadSet["month"], downloadSet["subject"], downloadSet["level"]) #customise this if you want
