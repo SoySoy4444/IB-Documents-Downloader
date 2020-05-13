@@ -19,6 +19,56 @@ def scrape_table_links(baseURL):
     
     return allSubjInGroup
 
+def scrape2(baseURL, language="eng"):
+    fallbackLang = "-eng"
+    
+    print(baseURL)
+    html_content = requests.get(baseURL)
+    soup = BeautifulSoup(html_content.content, "lxml")
+    
+    containerDiv = soup.find("section", id="services").find_all("div", class_="container")[1].find("div", class_="row services")
+    #print(containerDiv)
+
+    groupNames = []
+    for link in containerDiv.find_all('a'):
+        groupNames.append(link.get('href'))
+    print(groupNames)
+        
+        
+    dictWithLanguageOptions = {}
+    for fullGroupName in groupNames:
+        dashIndex = fullGroupName.find("-") #the fullGroupName is something like Studies_in_language_and_literature-eng.html. If we do fullGroupName.split("-"), the - is not included in the langSuffix like ['Studies_in_language_and_literature', 'eng.html']
+        groupName = fullGroupName[:dashIndex] #"Studies_in_language_and_literature", "The_arts", etc
+        languageSuffix = fullGroupName[dashIndex:] #'-ls.html', '-eng.html', '-fre.html', '-spa.html' etc
+        
+        if groupName not in dictWithLanguageOptions.keys():
+            dictWithLanguageOptions[groupName] = [languageSuffix]
+        else: #it already exists inside the dict
+            dictWithLanguageOptions[groupName].append(languageSuffix)
+    
+    """
+    print(dictWithLanguageOptions) #a beautiful dictionary that looks something like this:
+    {'Studies_in_language_and_literature': ["-ls.html", '-eng.html', '-fre.html', '-spa.html'], 
+    'Language_acquisition': ['-ls.html', '-eng.html', '-fre.html', '-spa.html'], 
+    'Individuals_and_societies': ['-ls.html', '-eng.html', '-fre.html', '-spa.html'], 
+    'Experimental_sciences': ['-ls.html', '-eng.html', '-fre.html', '-spa.html'], 
+    'Mathematics': ['-eng.html', '-fre.html', '-spa.html'], 
+    'The_arts': ['-eng.html', '-spa.html']}
+    """ 
+    
+    del groupNames[:] #delete all groupNames
+    groupNames.append("BUFFER") #so that when we later do groupNames[groupNumber], it is aligned since Python is 0 indexed and Group Number starts from 1
+    
+    #Now create a list of 
+    for group, listOfLangOptions in dictWithLanguageOptions.items():
+        for languageOption in listOfLangOptions:
+            if language in languageOption: #e.g. if "eng" in "-eng.html", then we found a match so break
+                groupNames.append(group + languageOption)
+                break #break out of the inner loop only
+        else: #code here will only be executed if the requested language option was not found for this particular group, and for loop was not broken, in which case use the fallback language
+            groupNames.append(group + fallbackLang)
+    return groupNames
+
 def get_files(allSubjInGroup, level, subject):
     #a list of all subject files, e.g. a list of all Economics papers
     subjectFiles = [file for file in allSubjInGroup if subject in file]
@@ -85,10 +135,10 @@ if __name__ == "__main__":
     validMonths = ["November", "May"]
     validLevels = ["HL", "SL", "Both"]
     
-    group1 = ["English_A1"]
+    group1 = ["English_A1", "French_A1"]
     group2 = ["English_A2", "English_B", "English_ab_initio"]
-    group3 = ["Economics", "Business Management", "Psychology", "Geography", "Global Politics", "History", "Environmental Systems and Societies"]
-    group4 = ["Physics", "Chemistry", "Biology", "Design", "Computer Science", "Sports_exercise_and_health_science", "Astronomy"]
+    group3 = ["Economics", "Business Management", "Psychology", "Geography", "Global Politics", "History"]
+    group4 = ["Physics", "Chemistry", "Biology", "Design", "Computer Science", "Sports_exercise_and_health_science", "Astronomy", "Environmental_systems_and_societies"]
     group5 = ["Mathematics"]
     group6 = ["Music", "Visual Art", "Theatre", "Film"]
     
@@ -142,17 +192,33 @@ if __name__ == "__main__":
                 break
 
         #Create the baseURL        
-        baseURL = ""
+        baseURL = f"https://www.ibdocuments.com/IB%20PAST%20PAPERS%20-%20YEAR/{year}%20Examination%20Session/{month}%20{year}%20Examination%20Session/" #base url for year folder, for both pre- and post-2016 system
         if year < 2016 or (year == 2016 and month == "May"): #before the new system
-            baseURL = f"https://www.ibdocuments.com/IB%20PAST%20PAPERS%20-%20YEAR/{year}%20Examination%20Session/{month}%20{year}%20Examination%20Session/" #base url for year folder
             allGroupNames = scrape_table_links(baseURL) #['/IB%20PAST%20PAPERS%20-%20YEAR/2012%20Examination%20Session/', 'Group%201%20-%20Studies%20in%20language%20and%20literature/', 'Group%202%20-%20Language%20acquisition/', 'Group%203%20-%20Individuals%20and%20societies/', 'Group%204%20-%20Sciences/', 'Group%205%20-%20Mathematics/', 'Group%206%20-%20The%20arts/']
+            groupName = allGroupNames[groupNumber] #e.g. "Group%204%20-%20Sciences/"
+            baseURL += groupName #base url for group folder for pre-2016 system
+        elif (year == 2017 or year == 2016 and month == "November"):
+            print("SORRY, 2016 NOV to 2017 NOV PAPERS ARE NOT SUPPORTED YET")
+            break
+        else: #from 2018 onwards
+            if groupNumber == 1 or groupNumber == 2: #if user wants to download a language course
+                if "English" in subject:
+                    requestedLang = "eng"
+                elif "French" in subject:
+                    requestedLang = "fre"
+                elif "Spanish" in subject:
+                    requestedLang = "spa"
+                else:
+                    requestedLang = "ls"
+            else: #a non language course, i.e. group 3 - 6
+                #TODO: Currently, user cannot select a language for a non language course like I&S or Experimental Sciences
+                requestedLang = "eng" #english by default
+            
+            allGroupNames = scrape2(baseURL, language=requestedLang)
             groupName = allGroupNames[groupNumber]
-            baseURL += groupName #base url for group folder
-        else:
-            #groupsDict = {1: "Studies_in_language_and_literature", 2: "Language_acquisition"} 
-            #these group names also need a "-eng.html" suffix too...
-            pass
-            #baseURL =
+            baseURL += groupName
+            print(baseURL)
+            break #TODO: Delete this break for actual use, leaving it here for debugging purposes.
     
         downloads.append({"baseURL": baseURL, "year": year, "month": month, "subject": subject, "level": level}) #append a dictionary of the key info
         
