@@ -7,52 +7,26 @@ import time
 
 #new URL system from Nov 2016 so it doesn't work
 
-#scraping BOTH group names AND file names for until May 2016
-def scrape_table_links(baseURL):
+#1. scraping group names for < May 2016
+#2. scraping file names for < May 2016 and > May 2018
+def scrape_table_links(baseURL, classAttribute):
     html_content = requests.get(baseURL)
     soup = BeautifulSoup(html_content.content, 'lxml')
     
-    rows = soup.find_all("td", class_="indexcolname")
-    #allSubjInGroup = [] #includes files from other subjects in the group like Business Management, Psychology, etc.
-    #for row in rows:
-        #allSubjInGroup.append(row.a.get("href"))
-    
-    allSubjInGroup = [row.a.get("href") for row in rows] #this list comprehension shortens the above 4 lines
-    return allSubjInGroup
-
-
-#scraping file names for 2018 onwards
-def scrape_files2(baseURL):
-    html_content = requests.get(baseURL)
-    soup = BeautifulSoup(html_content.content, 'lxml')
-    
-    rows = soup.find_all("td")
-    
-    #allSubjInGroup = [] #includes files from other subjects in the group like Business Management, Psychology, etc.
-    #for row in rows:
-    #    if row.find("a") is not None:# and row.startswith("<a"):
-    #    allSubjInGroup.append(row.a.get("href"))
-            
-    allSubjInGroup = [row.a.get("href") for row in rows if row.find("a") is not None] #this list comprehension shortens the above 4 lines
-    
+    rows = soup.find_all("td", class_=classAttribute)    
+    allSubjInGroup = [row.a.get("href") for row in rows if row.find("a") is not None] #includes files from other subjects in the group like Business Management, Psychology, etc.
     return allSubjInGroup
 
 #scraping group names for 2018 onwards
 def scrape2(baseURL, language="eng"):
     fallbackLang = "-eng"
     
-    print(baseURL)
     html_content = requests.get(baseURL)
     soup = BeautifulSoup(html_content.content, "lxml")
     
     containerDiv = soup.find("section", id="services").find_all("div", class_="container")[1].find("div", class_="row services")
-
-    #groupNames = []
-    #for link in containerDiv.find_all('a'):
-        #groupNames.append(link.get('href'))
-    groupNames = [link.get('href') for link in containerDiv.find_all('a')] #this list comprehension shortens the above 3 lines
-        
-        
+    groupNames = [link.get('href') for link in containerDiv.find_all('a')]
+    
     dictWithLanguageOptions = {}
     for fullGroupName in groupNames:
         dashIndex = fullGroupName.find("-") #the fullGroupName is something like Studies_in_language_and_literature-eng.html. If we do fullGroupName.split("-"), the - is not included in the langSuffix like ['Studies_in_language_and_literature', 'eng.html']
@@ -85,7 +59,7 @@ def scrape2(baseURL, language="eng"):
                 break #break out of the inner loop only
         else: #code here will only be executed if the requested language option was not found for this particular group, and for loop was not broken, in which case use the fallback language
             groupNames.append(group + fallbackLang)
-            
+    
     return groupNames
 
 def get_files(allSubjInGroup, level, subject):
@@ -218,7 +192,7 @@ if __name__ == "__main__":
         #Create the baseURL        
         baseURL = f"https://www.ibdocuments.com/IB%20PAST%20PAPERS%20-%20YEAR/{year}%20Examination%20Session/{month}%20{year}%20Examination%20Session/" #base url for year folder, for both pre- and post-2016 system
         if year < 2016 or (year == 2016 and month == "May"): #before the new system
-            allGroupNames = scrape_table_links(baseURL) #['/IB%20PAST%20PAPERS%20-%20YEAR/2012%20Examination%20Session/', 'Group%201%20-%20Studies%20in%20language%20and%20literature/', 'Group%202%20-%20Language%20acquisition/', 'Group%203%20-%20Individuals%20and%20societies/', 'Group%204%20-%20Sciences/', 'Group%205%20-%20Mathematics/', 'Group%206%20-%20The%20arts/']
+            allGroupNames = scrape_table_links(baseURL, "indexcolname") #['/IB%20PAST%20PAPERS%20-%20YEAR/2012%20Examination%20Session/', 'Group%201%20-%20Studies%20in%20language%20and%20literature/', 'Group%202%20-%20Language%20acquisition/', 'Group%203%20-%20Individuals%20and%20societies/', 'Group%204%20-%20Sciences/', 'Group%205%20-%20Mathematics/', 'Group%206%20-%20The%20arts/']
             groupName = allGroupNames[groupNumber] #e.g. "Group%204%20-%20Sciences/"
             baseURL += groupName #base url for group folder for pre-2016 system
         elif (year == 2017 or year == 2016 and month == "November"):
@@ -252,10 +226,12 @@ if __name__ == "__main__":
     #Actually download 
     for downloadSet in downloads:
         if int(downloadSet["year"]) >= 2018:
-            allSubjInGroup = scrape_files2(downloadSet["baseURL"])
+            allSubjInGroup = scrape_table_links(downloadSet["baseURL"], None)
         else:
-            allSubjInGroup = scrape_table_links(downloadSet["baseURL"])
+            allSubjInGroup = scrape_table_links(downloadSet["baseURL"], "indexcolname")
         
+        
+        print(allSubjInGroup)
         filesToBeDownloaded = get_files(allSubjInGroup, downloadSet["level"], downloadSet["subject"])
         
         if filesToBeDownloaded:
