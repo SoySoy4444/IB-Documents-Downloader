@@ -193,7 +193,14 @@ if __name__ == "__main__":
         baseURL = f"https://www.ibdocuments.com/IB%20PAST%20PAPERS%20-%20YEAR/{year}%20Examination%20Session/{month}%20{year}%20Examination%20Session/" #base url for year folder, for both pre- and post-2016 system
         if year < 2016 or (year == 2016 and month == "May"): #before the new system
             allGroupNames = scrape_table_links(baseURL, "indexcolname") #['/IB%20PAST%20PAPERS%20-%20YEAR/2012%20Examination%20Session/', 'Group%201%20-%20Studies%20in%20language%20and%20literature/', 'Group%202%20-%20Language%20acquisition/', 'Group%203%20-%20Individuals%20and%20societies/', 'Group%204%20-%20Sciences/', 'Group%205%20-%20Mathematics/', 'Group%206%20-%20The%20arts/']
-            groupName = allGroupNames[groupNumber] #e.g. "Group%204%20-%20Sciences/"
+
+            #print("ALL GROUP NAMES", allGroupNames)
+            for _groupName in allGroupNames[1:]: #Skip the first element, the '/IB%20PAST%20PAPERS%20-%20YEAR/1998%20Examination%20Session/May%201998%20Examination%20Session/' buffer
+                groupNumInGroupName = _groupName[8] #the group names are like 'Group%204%20-%20Sciences/', so the 8th index is '4' in this case, i.e. the group number
+                if int(groupNumInGroupName) == groupNumber:
+                    groupName = _groupName
+                    break
+
             baseURL += groupName #base url for group folder for pre-2016 system
         elif (year == 2017 or year == 2016 and month == "November"):
             print("SORRY, 2016 NOV to 2017 NOV PAPERS ARE NOT SUPPORTED YET")
