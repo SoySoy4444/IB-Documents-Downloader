@@ -127,19 +127,21 @@ def download(filesToBeDownloaded, folderName):
 
 if __name__ == "__main__":
     print("Hello, this script will download past papers from IB Documents.")
-    print("Unfortunately, it does not work from November 2016 to November 2017 yet")
+    print("Unfortunately, exams from November 2016 to November 2017 are not supported yet")
     print()
+    print("NOTE: If the pdfs are corrupt, delete the folder and try re-downloading. It should fix the problem")
     
     validMonths = ["November", "May"]
     validLevels = ["HL", "SL", "Both"]
     
-    group1 = ["English_A1", "French_A1"]
+    group1 = ["English_A1", "French_A1", "Spanish_A1", "German_A1", "Italian_A1",
+              "English_A_Language_and", "French_A_Language_and", "Spanish_A_Language_and", "German_A_Language_and", "Italian_A_Language_and", "Japanese_A_Language_and",
+              "English_A_Literature", "French_A_Literature", "Spanish_A_Literature", "German_A_Literature", "Italian_A_Literature", "Japanese_A_Literature"]
     group2 = ["English_A2", "English_B", "English_ab_initio"]
-    group3 = ["Economics", "Business Management", "Psychology", "Geography", "Global Politics", "History"]
-    group4 = ["Physics", "Chemistry", "Biology", "Design", "Computer Science", "Sports_exercise_and_health_science", "Astronomy", "Environmental_systems_and_societies"]
-    group5 = ["Mathematics"]
-    group6 = ["Music", "Visual Art", "Theatre", "Film"]
-    
+    group3 = ["Econ", "Business", "Psychology", "Geography", "Global Politics", "History", "ITGS", "Social_and_cultural", "World_religions"]
+    group4 = ["Physics", "Chemistry", "Biology", "Design", "Computer_science", "Sports_exercise_and_health_science", "Astronomy", "Environ"]
+    group5 = ["Mathematics", "Mathematical_studies", "Further_mathematics"]
+    group6 = ["Music"]
     groups = [group1, group2, group3, group4, group5, group6]
     
     downloads = []
