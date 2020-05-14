@@ -7,18 +7,37 @@ import time
 
 #new URL system from Nov 2016 so it doesn't work
 
+#scraping BOTH group names AND file names for until May 2016
 def scrape_table_links(baseURL):
     html_content = requests.get(baseURL)
     soup = BeautifulSoup(html_content.content, 'lxml')
-    #print(soup.prettify())
     
-    allSubjInGroup = [] #includes files from other subjects in the group like Business Management, Psychology, etc.
     rows = soup.find_all("td", class_="indexcolname")
-    for row in rows:
-        allSubjInGroup.append(row.a.get("href"))
+    #allSubjInGroup = [] #includes files from other subjects in the group like Business Management, Psychology, etc.
+    #for row in rows:
+        #allSubjInGroup.append(row.a.get("href"))
+    
+    allSubjInGroup = [row.a.get("href") for row in rows] #this list comprehension shortens the above 4 lines
+    return allSubjInGroup
+
+
+#scraping file names for 2018 onwards
+def scrape_files2(baseURL):
+    html_content = requests.get(baseURL)
+    soup = BeautifulSoup(html_content.content, 'lxml')
+    
+    rows = soup.find_all("td")
+    
+    #allSubjInGroup = [] #includes files from other subjects in the group like Business Management, Psychology, etc.
+    #for row in rows:
+    #    if row.find("a") is not None:# and row.startswith("<a"):
+    #    allSubjInGroup.append(row.a.get("href"))
+            
+    allSubjInGroup = [row.a.get("href") for row in rows if row.find("a") is not None] #this list comprehension shortens the above 4 lines
     
     return allSubjInGroup
 
+#scraping group names for 2018 onwards
 def scrape2(baseURL, language="eng"):
     fallbackLang = "-eng"
     
@@ -27,12 +46,11 @@ def scrape2(baseURL, language="eng"):
     soup = BeautifulSoup(html_content.content, "lxml")
     
     containerDiv = soup.find("section", id="services").find_all("div", class_="container")[1].find("div", class_="row services")
-    #print(containerDiv)
 
-    groupNames = []
-    for link in containerDiv.find_all('a'):
-        groupNames.append(link.get('href'))
-    print(groupNames)
+    #groupNames = []
+    #for link in containerDiv.find_all('a'):
+        #groupNames.append(link.get('href'))
+    groupNames = [link.get('href') for link in containerDiv.find_all('a')] #this list comprehension shortens the above 3 lines
         
         
     dictWithLanguageOptions = {}
@@ -67,6 +85,7 @@ def scrape2(baseURL, language="eng"):
                 break #break out of the inner loop only
         else: #code here will only be executed if the requested language option was not found for this particular group, and for loop was not broken, in which case use the fallback language
             groupNames.append(group + fallbackLang)
+            
     return groupNames
 
 def get_files(allSubjInGroup, level, subject):
@@ -101,8 +120,13 @@ def create_dir(year, month, subject, level):
 
 #Helper threaded function for download()
 def download_paper(file, folderName):
+    
     fileURL = baseURL + file
     r = requests.get(fileURL)
+    
+    #before 2016, file = Biology_paper_2__TZ1_SL.pdf, but after 2018, file = Individuals and societies/Geography_paper_2__question_booklet_HLSL.pdf WITH the group name
+    if "/" in file:
+        file = file[file.index("/")+1:]
     
     with open(os.path.join(folderName, file), "wb") as f:
         f.write(r.content)
@@ -129,7 +153,7 @@ def download(filesToBeDownloaded, folderName):
 
 if __name__ == "__main__":
     print("Hello, this script will download past papers from IB Documents.")
-    print("Unfortunately, it does not work from November 2016 onwards yet")
+    print("Unfortunately, it does not work from November 2016 to November 2017 yet")
     print()
     
     validMonths = ["November", "May"]
@@ -217,8 +241,6 @@ if __name__ == "__main__":
             allGroupNames = scrape2(baseURL, language=requestedLang)
             groupName = allGroupNames[groupNumber]
             baseURL += groupName
-            print(baseURL)
-            break #TODO: Delete this break for actual use, leaving it here for debugging purposes.
     
         downloads.append({"baseURL": baseURL, "year": year, "month": month, "subject": subject, "level": level}) #append a dictionary of the key info
         
@@ -229,8 +251,10 @@ if __name__ == "__main__":
     
     #Actually download 
     for downloadSet in downloads:
-        allSubjInGroup = scrape_table_links(downloadSet["baseURL"])
-        print(allSubjInGroup)
+        if int(downloadSet["year"]) >= 2018:
+            allSubjInGroup = scrape_files2(downloadSet["baseURL"])
+        else:
+            allSubjInGroup = scrape_table_links(downloadSet["baseURL"])
         
         filesToBeDownloaded = get_files(allSubjInGroup, downloadSet["level"], downloadSet["subject"])
         
